@@ -1,0 +1,8 @@
+[package]
+name = "frames"
+version = "0.1.0"
+authors = ["Christopher Rabotin <christopher.rabotin@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+nalgebra = "0.16"
