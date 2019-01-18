@@ -3,8 +3,8 @@ use nalgebra::geometry::UnitQuaternion;
 use nalgebra::Vector3;
 
 use std::fmt::Debug;
-pub trait Frame: Debug {
-    type ParentFrame: Frame;
+pub trait Frame: Debug + Sized {
+    fn parent() -> Option<Self>;
     fn name() -> &'static str;
     fn rotation_to_parent<M: FrameMgr>(at_time: f64, mgr: &M) -> UnitQuaternion<f64>;
     fn translation_to_parent<M: FrameMgr>(at_time: f64, mgr: &M) -> Vector3<f64>;
@@ -16,30 +16,22 @@ pub trait CelestialFrame: Frame {
 }
 
 pub trait FrameMgr {
-    fn frame_from_name(name: &'static str) -> impl Frame;
+    fn frame_from_name<F: Frame>(name: &'static str) -> F;
 
-    fn celestial_frame(name: &'static str) -> C
-    where
-        C: CelestialFrame;
+    fn celestial_frame<C: CelestialFrame>(name: &'static str) -> C;
     // fn convert_state<F: Frame, T: Frame>(from: State<F>) -> State<T>;
 }
 
 pub struct SimpleFrameMgr;
 impl FrameMgr for SimpleFrameMgr {
-    fn frame_from_name(name: &'static str) -> F
-    where
-        F: Frame,
-    {
+    fn frame_from_name<F: Frame>(name: &'static str) -> F {
         if name == "RIC" {
             return RIC {};
         }
         panic!("unknown frame");
     }
 
-    fn celestial_frame(name: &'static str) -> C
-    where
-        C: CelestialFrame,
-    {
+    fn celestial_frame<C: CelestialFrame>(name: &'static str) -> C {
         if name == "ECI" {
             return ECI {};
         } else if name == "SSB" {
@@ -151,7 +143,9 @@ where
 #[derive(Debug)]
 pub struct RIC;
 impl Frame for RIC {
-    type ParentFrame = Self;
+    fn parent() -> Option<Self> {
+        None
+    }
 
     fn name() -> &'static str {
         "RIC"
@@ -169,7 +163,9 @@ impl Frame for RIC {
 #[derive(Debug)]
 pub struct ECI;
 impl Frame for ECI {
-    type ParentFrame = SSB;
+    fn parent() -> Option<Self> {
+        SSB {}
+    }
 
     fn name() -> &'static str {
         "ECI"
@@ -191,7 +187,9 @@ impl CelestialFrame for ECI {
 pub struct SSB;
 
 impl Frame for SSB {
-    type ParentFrame = Self;
+    fn parent() -> Option<Self> {
+        None
+    }
 
     fn name() -> &'static str {
         "SSB"
