@@ -18,7 +18,7 @@ pub trait Frame
 where
     Self: Sized,
 {
-    fn gm(self) -> f64;
+    fn gm(&self) -> f64;
     fn parent(self) -> Option<Box<Self>>;
     fn rotation_to_parent(self, at: f64) -> UnitQuaternion<f64>;
 }
@@ -30,7 +30,7 @@ pub struct CelestialFrame {
 }
 
 impl Frame for CelestialFrame {
-    fn gm(self) -> f64 {
+    fn gm(&self) -> f64 {
         self.body.gm
     }
     fn parent(self) -> Option<Box<CelestialFrame>> {
@@ -97,15 +97,15 @@ where
 
 impl State<CelestialFrame> {
     /// Returns the magnitude of the radius vector in km
-    pub fn rmag(self) -> f64 {
+    pub fn rmag(&self) -> f64 {
         (self.x.powi(2) + self.y.powi(2) + self.z.powi(2)).sqrt()
     }
 
     /// Returns the magnitude of the velocity vector in km/s
-    pub fn vmag(self) -> f64 {
+    pub fn vmag(&self) -> f64 {
         (self.vx.powi(2) + self.vy.powi(2) + self.vz.powi(2)).sqrt()
     }
-    pub fn energy(self) -> f64 {
+    pub fn energy(&self) -> f64 {
         self.vmag().powi(2) / 2.0 - self.gm / self.rmag()
     }
 }
