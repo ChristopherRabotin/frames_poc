@@ -24,11 +24,16 @@ pub fn between_pm_180(angle: f64) -> f64 {
     bounded
 }
 
+pub mod cosm;
 pub mod frames;
 pub mod state;
 
 #[cfg(test)]
 mod tests {
     #[test]
-    fn it_works() {}
+    fn it_works() {
+        use crate::cosm::GraphMemCosm;
+        let cosm: GraphMemCosm = Default::default();
+        println!("{:?}", cosm);
+    }
 }
