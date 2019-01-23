@@ -4,14 +4,24 @@ use nalgebra::UnitQuaternion;
 use std::collections::HashMap;
 
 pub trait Body {
-    fn frames<F: Frame>() -> [F];
+    type FrameType;
+
+    fn frames(&self) -> Vec<&Box<Self::FrameType>>;
 }
 
 pub struct CelestialBody {
     gm: f64,
-    eq_radius: f64,
-    flattening: f64,
     frames_map: HashMap<String, Box<CelestialFrame>>,
+}
+
+impl Body for CelestialBody {
+    type FrameType = CelestialFrame;
+
+    fn frames(&self) -> Vec<&Box<CelestialFrame>> {
+        let frames: Vec<&Box<CelestialFrame>> =
+            self.frames_map.iter().map(|(_, frame)| frame).collect();
+        frames
+    }
 }
 
 pub trait Frame
@@ -20,7 +30,7 @@ where
 {
     fn gm(&self) -> f64;
     fn parent(self) -> Option<Box<Self>>;
-    fn rotation_to_parent(self, at: f64) -> UnitQuaternion<f64>;
+    fn rotation_to_parent(&self, at: f64) -> UnitQuaternion<f64>;
 }
 
 pub struct CelestialFrame {
@@ -36,12 +46,27 @@ impl Frame for CelestialFrame {
     fn parent(self) -> Option<Box<CelestialFrame>> {
         self.parent
     }
-    fn rotation_to_parent(self, at: f64) -> UnitQuaternion<f64> {
+    fn rotation_to_parent(&self, at: f64) -> UnitQuaternion<f64> {
         self.rotation
     }
 }
 
-pub struct SpaceraftFrame;
+pub struct SpaceraftFrame {
+    parent: Option<Box<SpaceraftFrame>>,
+    rotation: UnitQuaternion<f64>,
+}
+
+impl Frame for SpaceraftFrame {
+    fn gm(&self) -> f64 {
+        0.0
+    }
+    fn parent(self) -> Option<Box<SpaceraftFrame>> {
+        self.parent
+    }
+    fn rotation_to_parent(&self, at: f64) -> UnitQuaternion<f64> {
+        self.rotation
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 pub struct State<F>
@@ -78,9 +103,8 @@ where
     where
         G: Frame,
     {
-        let gm = frame.gm();
         State {
-            gm,
+            gm: frame.gm(),
             x,
             y,
             z,
@@ -107,6 +131,27 @@ impl State<CelestialFrame> {
     }
     pub fn energy(&self) -> f64 {
         self.vmag().powi(2) / 2.0 - self.gm / self.rmag()
+    }
+}
+
+impl State<SpaceraftFrame> {
+    pub fn from_position<G>(x: f64, y: f64, z: f64, frame: G) -> State<G>
+    where
+        G: Frame,
+    {
+        State {
+            gm: frame.gm(),
+            x,
+            y,
+            z,
+            vx: 0.0,
+            vy: 0.0,
+            vz: 0.0,
+            ax: 0.0,
+            ay: 0.0,
+            az: 0.0,
+            frame,
+        }
     }
 }
 
