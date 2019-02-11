@@ -5,14 +5,13 @@ where
     Self: Sized,
 {
     fn gm(&self) -> f64;
-    fn parent(self) -> Option<Box<Self>>;
-    fn rotation_to_parent(&self, at: f64) -> UnitQuaternion<f64>;
+    fn name(self) -> String;
 }
 
 pub struct CelestialFrame {
-    parent: Option<Box<CelestialFrame>>,
-    rotation: UnitQuaternion<f64>,
-    body: Box<CelestialBody>,
+    pub parent: Option<Box<CelestialFrame>>,
+    pub rotation: UnitQuaternion<f64>,
+    pub body: &CelestialBody,
 }
 
 impl Frame for CelestialFrame {
@@ -28,8 +27,8 @@ impl Frame for CelestialFrame {
 }
 
 pub struct SpaceraftFrame {
-    parent: Option<Box<SpaceraftFrame>>,
-    rotation: UnitQuaternion<f64>,
+    pub parent: Option<Box<SpaceraftFrame>>,
+    pub rotation: UnitQuaternion<f64>,
 }
 
 impl Frame for SpaceraftFrame {
@@ -45,9 +44,9 @@ impl Frame for SpaceraftFrame {
 }
 
 pub struct GeoidFrame {
-    parent: Option<Box<GeoidFrame>>,
-    rotation: UnitQuaternion<f64>,
-    body: Box<CelestialFrame>,
+    pub parent: Option<Box<GeoidFrame>>,
+    pub rotation: UnitQuaternion<f64>,
+    pub body: &CelestialFrame,
     pub flattening: f64,
     pub semi_major_radius: f64,
     pub rotation_rate: f64,
@@ -71,20 +70,18 @@ use std::collections::HashMap;
 pub trait Body {
     type FrameType;
 
-    fn frames(&self) -> Vec<&Box<Self::FrameType>>;
+    fn name(self) -> String;
 }
 
 pub struct CelestialBody {
     pub gm: f64,
-    frames_map: HashMap<String, Box<CelestialFrame>>,
+    pub name: String,
 }
 
 impl Body for CelestialBody {
     type FrameType = CelestialFrame;
 
-    fn frames(&self) -> Vec<&Box<CelestialFrame>> {
-        let frames: Vec<&Box<CelestialFrame>> =
-            self.frames_map.iter().map(|(_, frame)| frame).collect();
-        frames
+    fn name(self) -> String {
+        self.name
     }
 }

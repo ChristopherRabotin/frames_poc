@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate lazy_static;
 extern crate nalgebra;
 
 /// Returns the provided angle bounded between 0.0 and 360.0
