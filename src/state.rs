@@ -4,11 +4,10 @@ use crate::{between_0_360, between_pm_180};
 use nalgebra::Vector3;
 
 #[derive(Copy, Clone, Debug)]
-pub struct State<F>
+pub struct State<B>
 where
-    F: Frame,
+    B: Body,
 {
-    gm: f64, // Set to zero if Frame is NOT CelestialFrame
     pub x: f64,
     pub y: f64,
     pub z: f64,
@@ -18,13 +17,12 @@ where
     pub ax: f64,
     pub ay: f64,
     pub az: f64,
-    /// The frame will later allow for coordinate frame transformations.
-    pub frame: F,
+    pub frame: B,
 }
 
 impl<F> State<F>
 where
-    F: Frame,
+    F: Body,
 {
     pub fn from_position_velocity<G>(
         x: f64,
@@ -36,16 +34,33 @@ where
         frame: G,
     ) -> State<G>
     where
-        G: Frame,
+        G: Body,
     {
         State {
-            gm: frame.gm(),
             x,
             y,
             z,
             vx,
             vy,
             vz,
+            ax: 0.0,
+            ay: 0.0,
+            az: 0.0,
+            frame,
+        }
+    }
+
+    pub fn from_position<G>(x: f64, y: f64, z: f64, frame: G) -> State<G>
+    where
+        G: Body,
+    {
+        State {
+            x,
+            y,
+            z,
+            vx: 0.0,
+            vy: 0.0,
+            vz: 0.0,
             ax: 0.0,
             ay: 0.0,
             az: 0.0,
@@ -64,19 +79,23 @@ where
     }
 }
 
-impl State<CelestialFrame> {
+impl State<Geoid> {
     pub fn energy(&self) -> f64 {
-        self.vmag().powi(2) / 2.0 - self.gm / self.rmag()
+        self.vmag().powi(2) / 2.0 - self.frame.gm / self.rmag()
+    }
+
+    /// Returns the semi-major axis in km
+    pub fn sma(self) -> f64 {
+        -self.frame.gm / (2.0 * self.energy())
     }
 }
 
-impl State<SpaceraftFrame> {
-    pub fn from_position<G>(x: f64, y: f64, z: f64, frame: G) -> State<G>
+impl State<Spacecraft> {
+    pub fn from_offset<G>(x: f64, y: f64, z: f64, frame: G) -> State<G>
     where
-        G: Frame,
+        G: Body,
     {
         State {
-            gm: frame.gm(),
             x,
             y,
             z,
@@ -91,18 +110,13 @@ impl State<SpaceraftFrame> {
     }
 }
 
-impl State<GeoidFrame> {
+impl State<Geoid> {
     /// Creates a new State from the geodetic latitude (φ), longitude (λ) and height with respect to Earth's ellipsoid.
     ///
     /// **Units:** degrees, degrees, km
     /// NOTE: This computation differs from the spherical coordinates because we consider the flattening of Earth.
     /// Reference: G. Xu and Y. Xu, "GPS", DOI 10.1007/978-3-662-50367-6_2, 2016
-    pub fn from_geodesic(
-        latitude: f64,
-        longitude: f64,
-        height: f64,
-        frame: GeoidFrame,
-    ) -> State<GeoidFrame> {
+    pub fn from_geodesic(latitude: f64, longitude: f64, height: f64, frame: Geoid) -> State<Geoid> {
         let e2 = 2.0 * frame.flattening - frame.flattening.powi(2);
         let (sin_long, cos_long) = longitude.to_radians().sin_cos();
         let (sin_lat, cos_lat) = latitude.to_radians().sin_cos();
@@ -115,7 +129,7 @@ impl State<GeoidFrame> {
         let rk = (s_earth + height) * sin_lat;
         let radius = Vector3::new(ri, rj, rk);
         let velocity = Vector3::new(0.0, 0.0, frame.rotation_rate).cross(&radius);
-        State::<GeoidFrame>::from_position_velocity(
+        State::<Geoid>::from_position_velocity(
             radius[(0, 0)],
             radius[(1, 0)],
             radius[(2, 0)],
@@ -129,8 +143,8 @@ impl State<GeoidFrame> {
     /// Creates a new ECEF state at the provided position.
     ///
     /// NOTE: This has the same container as the normal State. Hence, we set the velocity at zero.
-    pub fn from_position(i: f64, j: f64, k: f64, frame: GeoidFrame) -> State<GeoidFrame> {
-        State::<GeoidFrame>::from_position_velocity(i, j, k, 0.0, 0.0, 0.0, frame)
+    pub fn from_ijk(i: f64, j: f64, k: f64, frame: Geoid) -> State<Geoid> {
+        State::<Geoid>::from_position_velocity(i, j, k, 0.0, 0.0, 0.0, frame)
     }
 
     /// Returns the I component of this ECEF frame
