@@ -1,4 +1,4 @@
-use crate::exb::ephemeris::Identifier;
+use crate::fxb::frame::Identifier;
 use nalgebra::UnitQuaternion;
 
 pub struct Frame<B: Body> {
@@ -15,8 +15,8 @@ pub struct Geoid {
     pub id: Identifier,
     pub gm: f64,
     pub flattening: f64,
+    pub equatorial_radius: f64,
     pub semi_major_radius: f64,
-    pub rotation_rate: f64,
 }
 
 impl Geoid {
@@ -25,8 +25,8 @@ impl Geoid {
             id,
             gm,
             flattening: 0.0,
+            equatorial_radius: 0.0,
             semi_major_radius: 0.0,
-            rotation_rate: 0.0,
         }
     }
 }

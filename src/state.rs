@@ -116,7 +116,7 @@ impl State<Geoid> {
         let rj = (c_earth + height) * cos_lat * sin_long;
         let rk = (s_earth + height) * sin_lat;
         let radius = Vector3::new(ri, rj, rk);
-        let velocity = Vector3::new(0.0, 0.0, frame.rotation_rate).cross(&radius);
+        let velocity = Vector3::new(0.0, 0.0, 7.292_115_146_706_4e-5).cross(&radius);
         State::<Geoid>::from_position_velocity(
             radius[(0, 0)],
             radius[(1, 0)],
