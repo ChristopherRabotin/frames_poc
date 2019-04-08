@@ -1,10 +1,5 @@
+use crate::exb::ephemeris::Identifier;
 use nalgebra::UnitQuaternion;
-
-#[derive(Clone, Debug)]
-pub struct Identifier {
-    pub number: i32,
-    pub name: String,
-}
 
 pub struct Frame<B: Body> {
     pub center: B,

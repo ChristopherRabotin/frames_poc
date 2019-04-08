@@ -14,9 +14,6 @@ where
     pub vx: f64,
     pub vy: f64,
     pub vz: f64,
-    pub ax: f64,
-    pub ay: f64,
-    pub az: f64,
     pub frame: B,
 }
 
@@ -43,9 +40,6 @@ where
             vx,
             vy,
             vz,
-            ax: 0.0,
-            ay: 0.0,
-            az: 0.0,
             frame,
         }
     }
@@ -61,9 +55,6 @@ where
             vx: 0.0,
             vy: 0.0,
             vz: 0.0,
-            ax: 0.0,
-            ay: 0.0,
-            az: 0.0,
             frame,
         }
     }
@@ -102,9 +93,6 @@ impl State<Spacecraft> {
             vx: 0.0,
             vy: 0.0,
             vz: 0.0,
-            ax: 0.0,
-            ay: 0.0,
-            az: 0.0,
             frame,
         }
     }
