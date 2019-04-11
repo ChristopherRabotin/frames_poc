@@ -44,7 +44,7 @@ impl Cosm {
                 if let Some(gm) = ephem.ephem_parameters.get("GM") {
                     // It's a geoid, and we assume everything else is there
                     let geoid = Geoid {
-                        id: exb_id.clone(),
+                        frame_id: exb_id.clone(),
                         gm: gm.value,
                         flattening: ephem.ephem_parameters.get("Flattening").unwrap().value,
                         equatorial_radius: ephem

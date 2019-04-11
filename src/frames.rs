@@ -1,18 +1,13 @@
-use crate::fxb::frame::Identifier;
-use nalgebra::UnitQuaternion;
-
-pub struct Frame<B: Body> {
-    pub center: B,
-    pub xb_id: Identifier,
-}
+pub use crate::exb::ephemeris::Identifier as EXBID;
+pub use crate::fxb::frame::Identifier as FrameID;
 
 pub trait Body {
-    fn id(&self) -> &Identifier;
+    fn frame_id(&self) -> &FrameID;
 }
 
 #[derive(Clone, Debug)]
 pub struct Geoid {
-    pub id: Identifier,
+    pub frame_id: FrameID,
     pub gm: f64,
     pub flattening: f64,
     pub equatorial_radius: f64,
@@ -20,9 +15,9 @@ pub struct Geoid {
 }
 
 impl Geoid {
-    pub fn perfect_sphere(id: Identifier, gm: f64) -> Geoid {
+    pub fn perfect_sphere(frame_id: FrameID, gm: f64) -> Geoid {
         Geoid {
-            id,
+            frame_id,
             gm,
             flattening: 0.0,
             equatorial_radius: 0.0,
@@ -32,17 +27,17 @@ impl Geoid {
 }
 
 impl Body for Geoid {
-    fn id(&self) -> &Identifier {
-        &self.id
+    fn frame_id(&self) -> &FrameID {
+        &self.frame_id
     }
 }
 
 pub struct Spacecraft {
-    pub id: Identifier,
+    pub frame_id: FrameID,
 }
 
 impl Body for Spacecraft {
-    fn id(&self) -> &Identifier {
-        &self.id
+    fn frame_id(&self) -> &FrameID {
+        &self.frame_id
     }
 }
