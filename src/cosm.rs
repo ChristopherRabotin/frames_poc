@@ -2,10 +2,11 @@
 
 extern crate petgraph;
 
-// use crate::exb::ephemeris::Identifier;
+use crate::exb::interpolation::StateData::{EqualStates, VarwindowStates};
 use crate::exb::Ephemeris;
 use crate::frames::*;
 use crate::fxb::Frame;
+use crate::state::State;
 use crate::{load_ephemeris, load_frames};
 use nalgebra::UnitQuaternion;
 // use petgraph::Graph;
@@ -15,6 +16,13 @@ pub struct Cosm {
     ephemerides: HashMap<(i32, String), Ephemeris>,
     frames: HashMap<(i32, String), Frame>,
     geoids: HashMap<(i32, String), Geoid>, // TODO: Change to Graph (must confirm traverse)
+}
+
+#[derive(Debug)]
+pub enum CosmError {
+    ObjectNotFound,
+    NoInterpolationData,
+    NoStateData,
 }
 
 impl Cosm {
@@ -66,7 +74,7 @@ impl Cosm {
 
                     cosm.geoids.insert(exb_tpl, geoid);
                 }
-            } else if exb_id.number == 100000 {
+            } else if exb_id.number == 0 {
                 // Solar System Barycenter
                 cosm.geoids
                     .insert(exb_tpl, Geoid::perfect_sphere(exb_id, 1.327_124_400_18e20));
@@ -75,6 +83,58 @@ impl Cosm {
 
         cosm
     }
+
+    pub fn position<B: Body>(&self, exb: EXBID, jde: f64, frame: B) -> Result<State<B>, CosmError> {
+        let ephem = self
+            .ephemerides
+            .get(&(exb.number, exb.name))
+            .ok_or(CosmError::ObjectNotFound)?;
+
+        // Compute the position
+        // TODO: Maybe should this cache the previous ephemeris retrieved?
+        let interp = ephem
+            .clone()
+            .interpolator
+            .ok_or(CosmError::NoInterpolationData)?;
+
+        let start_mod_julian: f64 = interp.start_mod_julian;
+        let coefficient_count: usize = interp.position_degree as usize;
+
+        let exb_states = match interp.state_data.ok_or(CosmError::NoStateData)? {
+            EqualStates(states) => states.clone(),
+            VarwindowStates(_) => panic!("var window not yet supported by Cosm"),
+        };
+
+        let interval_length: f64 = exb_states.window_duration;
+
+        let delta_jde = jde - start_mod_julian;
+        let index_f = (delta_jde / interval_length).round();
+        let offset = delta_jde - index_f * interval_length;
+        let index = index_f as usize;
+
+        let pos_coeffs = &exb_states.position[index];
+
+        let mut interp_t = vec![0.0; coefficient_count];
+        let t1 = 2.0 * offset / interval_length - 1.0;
+        interp_t[0] = 1.0;
+        interp_t[1] = t1;
+        for i in 2..coefficient_count {
+            interp_t[i] = (2.0 * t1) * interp_t[i - 1] - interp_t[i - 2];
+        }
+
+        let mut x = 0.0;
+        let mut y = 0.0;
+        let mut z = 0.0;
+
+        for (idx, factor) in interp_t.iter().enumerate() {
+            x += factor * pos_coeffs.x[idx];
+            y += factor * pos_coeffs.y[idx];
+            z += factor * pos_coeffs.z[idx];
+        }
+
+        // BUG: This does not perform any frame transformation
+        Ok(State::<B>::from_position(x, y, z, frame))
+    }
 }
 
 #[cfg(test)]
@@ -82,7 +142,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_load() {
+    fn test_cosm() {
         let cosm = Cosm::from_xb("./de438s");
         for key in cosm.frames.keys() {
             println!("{:?}", key);
@@ -93,6 +153,15 @@ mod tests {
         for geoid in cosm.geoids.values() {
             println!("{:?}", geoid);
         }
+
+        let obj_id = EXBID {
+            number: 100000,
+            name: "J2000 SSB".to_string(),
+        };
+
+        let out_body = cosm.geoids[&(0, "Solar System Barycenter".to_string())].clone();
+
+        println!("{:?}", cosm.position(obj_id, 2474160.13175, out_body));
     }
 }
 
