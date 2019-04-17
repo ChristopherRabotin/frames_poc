@@ -158,10 +158,24 @@ impl Cosm {
         }
 
         let ref_frame = ephem.ref_frame.clone().unwrap();
-        println!("{:?}", ref_frame);
+        // Get the EXB of that frame
+        let frame_center = self
+            .frames
+            .get(&(ref_frame.number, ref_frame.name))
+            .unwrap()
+            .exb_id
+            .clone()
+            .unwrap();
         // Get the Geoid associated with the ephemeris frame
-        let storage_geoid = self.geoids.get(&(ref_frame.number, ref_frame.name));
-        println!("{:?}", storage_geoid);
+        let storage_geoid = self
+            .geoids
+            .get(&(frame_center.number, frame_center.name))
+            .unwrap();
+
+        // We now have the state of the body in its storage frame.
+        let storage_state =
+            State::<Geoid>::from_position_velocity(x, y, z, vx, vy, vz, storage_geoid.clone());
+        println!("{}", storage_state.vmag());
 
         // BUG: This does not perform any frame transformation
         Ok(State::<B>::from_position_velocity(
@@ -178,7 +192,7 @@ mod tests {
     fn test_cosm() {
         let cosm = Cosm::from_xb("./de438s");
         for key in cosm.frames.keys() {
-            println!("frame -- {:?}", key);
+            println!("frame -- {:?} => {:?}", key, cosm.frames[&key]);
         }
         for ek in cosm.ephemerides.keys() {
             println!(
