@@ -135,9 +135,14 @@ impl Cosm {
         let mut interp_dt = vec![0.0; coefficient_count];
         interp_dt[0] = 0.0;
         interp_dt[1] = 1.0;
-        interp_dt[2] = t1 + t1;
+        interp_dt[2] = 2.0 * (2.0 * t1);
         for i in 3..coefficient_count {
-            interp_dt[i] = (2.0 * t1) * interp_dt[i - 1] - interp_dt[i - 2] + 2.0 * interp_t[i - 1];
+            interp_dt[i] = (2.0 * t1) * interp_dt[i - 1] - interp_dt[i - 2]
+                + interp_t[i - 1]
+                + interp_t[i - 1];
+        }
+        for i in 0..interp_dt.len() {
+            interp_dt[i] *= 2.0 / interval_length;
         }
 
         let mut x = 0.0;
@@ -175,7 +180,7 @@ impl Cosm {
         // We now have the state of the body in its storage frame.
         let storage_state =
             State::<Geoid>::from_position_velocity(x, y, z, vx, vy, vz, storage_geoid.clone());
-        println!("{}", storage_state.vmag());
+        println!("{} {}", storage_state.rmag(), storage_state.vmag());
 
         // BUG: This does not perform any frame transformation
         Ok(State::<B>::from_position_velocity(
@@ -204,14 +209,14 @@ mod tests {
             println!("geoid -- {:?} {:?}", ek, cosm.geoids[&ek]);
         }
 
-        let sun_id = EXBID {
-            number: 10,
-            name: "Sun".to_string(),
+        let exb_id = EXBID {
+            number: 3,
+            name: "Earth Barycenter".to_string(),
         };
 
         let out_body = cosm.geoids[&(0, "Solar System Barycenter".to_string())].clone();
 
-        println!("{:?}", cosm.state(sun_id, 2474160.13175, out_body));
+        println!("{:?}", cosm.state(exb_id, 2474160.13175, out_body));
     }
 }
 
