@@ -84,7 +84,7 @@ impl Cosm {
         cosm
     }
 
-    pub fn position<B: Body>(&self, exb: EXBID, jde: f64, frame: B) -> Result<State<B>, CosmError> {
+    pub fn state<B: Body>(&self, exb: EXBID, jde: f64, frame: B) -> Result<State<B>, CosmError> {
         let ephem =
             self.ephemerides
                 .get(&(exb.number, exb.name))
@@ -131,18 +131,42 @@ impl Cosm {
             interp_t[i] = (2.0 * t1) * interp_t[i - 1] - interp_t[i - 2];
         }
 
+        // XXX: This uses the positions to compute the velocity.
+        let mut interp_dt = vec![0.0; coefficient_count];
+        interp_dt[0] = 0.0;
+        interp_dt[1] = 1.0;
+        interp_dt[2] = t1 + t1;
+        for i in 3..coefficient_count {
+            interp_dt[i] = (2.0 * t1) * interp_dt[i - 1] - interp_dt[i - 2] + 2.0 * interp_t[i - 1];
+        }
+
         let mut x = 0.0;
         let mut y = 0.0;
         let mut z = 0.0;
+        let mut vx = 0.0;
+        let mut vy = 0.0;
+        let mut vz = 0.0;
 
-        for (idx, factor) in interp_t.iter().enumerate() {
-            x += factor * pos_coeffs.x[idx];
-            y += factor * pos_coeffs.y[idx];
-            z += factor * pos_coeffs.z[idx];
+        for (idx, pos_factor) in interp_t.iter().enumerate() {
+            let vel_factor = interp_dt[idx];
+            x += pos_factor * pos_coeffs.x[idx];
+            y += pos_factor * pos_coeffs.y[idx];
+            z += pos_factor * pos_coeffs.z[idx];
+            vx += vel_factor * pos_coeffs.x[idx];
+            vy += vel_factor * pos_coeffs.y[idx];
+            vz += vel_factor * pos_coeffs.z[idx];
         }
 
+        let ref_frame = ephem.ref_frame.clone().unwrap();
+        println!("{:?}", ref_frame);
+        // Get the Geoid associated with the ephemeris frame
+        let storage_geoid = self.geoids.get(&(ref_frame.number, ref_frame.name));
+        println!("{:?}", storage_geoid);
+
         // BUG: This does not perform any frame transformation
-        Ok(State::<B>::from_position(x, y, z, frame))
+        Ok(State::<B>::from_position_velocity(
+            x, y, z, vx, vy, vz, frame,
+        ))
     }
 }
 
@@ -173,7 +197,7 @@ mod tests {
 
         let out_body = cosm.geoids[&(0, "Solar System Barycenter".to_string())].clone();
 
-        println!("{:?}", cosm.position(sun_id, 2474160.13175, out_body));
+        println!("{:?}", cosm.state(sun_id, 2474160.13175, out_body));
     }
 }
 
