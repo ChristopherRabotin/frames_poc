@@ -20,9 +20,9 @@ pub struct Cosm {
 
 #[derive(Debug)]
 pub enum CosmError {
-    ObjectNotFound,
-    NoInterpolationData,
-    NoStateData,
+    ObjectNotFound(i32, String),
+    NoInterpolationData(i32, String),
+    NoStateData(i32, String),
 }
 
 impl Cosm {
@@ -85,22 +85,31 @@ impl Cosm {
     }
 
     pub fn position<B: Body>(&self, exb: EXBID, jde: f64, frame: B) -> Result<State<B>, CosmError> {
-        let ephem = self
-            .ephemerides
-            .get(&(exb.number, exb.name))
-            .ok_or(CosmError::ObjectNotFound)?;
+        let ephem =
+            self.ephemerides
+                .get(&(exb.number, exb.name))
+                .ok_or(CosmError::ObjectNotFound(
+                    exb.number,
+                    "exb.name".to_string(),
+                ))?;
 
         // Compute the position
         // TODO: Maybe should this cache the previous ephemeris retrieved?
         let interp = ephem
             .clone()
             .interpolator
-            .ok_or(CosmError::NoInterpolationData)?;
+            .ok_or(CosmError::NoInterpolationData(
+                exb.number,
+                "exb.name".to_string(),
+            ))?;
 
         let start_mod_julian: f64 = interp.start_mod_julian;
         let coefficient_count: usize = interp.position_degree as usize;
 
-        let exb_states = match interp.state_data.ok_or(CosmError::NoStateData)? {
+        let exb_states = match interp
+            .state_data
+            .ok_or(CosmError::NoStateData(exb.number, "exb.name".to_string()))?
+        {
             EqualStates(states) => states.clone(),
             VarwindowStates(_) => panic!("var window not yet supported by Cosm"),
         };
@@ -145,23 +154,26 @@ mod tests {
     fn test_cosm() {
         let cosm = Cosm::from_xb("./de438s");
         for key in cosm.frames.keys() {
-            println!("{:?}", key);
+            println!("frame -- {:?}", key);
         }
-        for ephem in cosm.ephemerides.values() {
-            println!("{:?}", ephem.ephem_parameters);
+        for ek in cosm.ephemerides.keys() {
+            println!(
+                "ephem -- {:?} {:?}",
+                ek, cosm.ephemerides[&ek].ephem_parameters
+            );
         }
-        for geoid in cosm.geoids.values() {
-            println!("{:?}", geoid);
+        for ek in cosm.geoids.keys() {
+            println!("geoid -- {:?} {:?}", ek, cosm.geoids[&ek]);
         }
 
-        let obj_id = EXBID {
-            number: 100000,
-            name: "J2000 SSB".to_string(),
+        let sun_id = EXBID {
+            number: 10,
+            name: "Sun".to_string(),
         };
 
         let out_body = cosm.geoids[&(0, "Solar System Barycenter".to_string())].clone();
 
-        println!("{:?}", cosm.position(obj_id, 2474160.13175, out_body));
+        println!("{:?}", cosm.position(sun_id, 2474160.13175, out_body));
     }
 }
 
