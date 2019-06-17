@@ -216,7 +216,20 @@ mod tests {
 
         let out_body = cosm.geoids[&(0, "Solar System Barycenter".to_string())].clone();
 
-        println!("{:?}", cosm.state(exb_id, 2474160.13175, out_body));
+        let out_state = cosm.state(exb_id, 2474160.13175, out_body).unwrap();
+        println!("{:?}", out_state);
+
+        /*
+        Expected data from jplephem
+        (array([5.30527022e+07, 1.25344353e+08, 5.43293743e+07]), array([-2444703.8160139 ,   834536.49356688,   361669.07958066]))
+        */
+        // XXX: Why is the position that far off?!
+        assert!((out_state.x - 5.30527022e+07).abs() < 1e-1);
+        assert!((out_state.y - 1.25344353e+08).abs() < 1e-0);
+        assert!((out_state.z - 5.43293743e+07).abs() < 1e-1);
+        assert!((out_state.vx - -2444703.8160139).abs() < 1e-5);
+        assert!((out_state.vy - 834536.49356688).abs() < 1e-5);
+        assert!((out_state.vz - 361669.07958066).abs() < 1e-5);
     }
 }
 
